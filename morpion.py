@@ -149,7 +149,7 @@ if __name__ == '__main__':
     robot = NiryoRobot("10.10.10.10")
     robot.calibrate_auto()
     
-    robot.set_brightness(0.9)
+    robot.set_brightness(1.3)
     robot.set_contrast(1.0)
     robot.set_saturation(1.1)
     
