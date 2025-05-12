@@ -194,7 +194,7 @@ if __name__ == '__main__':
         coup = meilleur_coup(game)
         play(game, coup)
         newGame = copy.deepcopy(game)
-        check_winner(game)
+        playing = check_winner(game)
     
     robot.move_joints(homeJoints)
     robot.close_connection()
