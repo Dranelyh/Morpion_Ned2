@@ -2,6 +2,18 @@ from pyniryo import *
 from minimax import *
 import copy
 
+#enregistre la position relative en x et y des cases dans le repère dynamique Morpion en partant de haut à gauche et en finissant en bas à droite
+caseMorpion = [
+    [[0.025, 0.155], [0.09, 0.155], [0.155, 0.155]],
+    [[0.025, 0.09],  [0.09, 0.09],  [0.155, 0.09]],
+    [[0.025, 0.025], [0.09, 0.025], [0.155, 0.025]]
+    ]
+
+homeJoints = [0, 0.5, -1.25, 0, 0, 0]
+observationJoints = [0, 0.22, -0.4, 0, -1.6, 0] 
+
+pickPose = PoseObject(0.2768, -0.1265, 0.1091, 0.177, 1.251, -1.431)
+
 def detect_objects_positions(robot, coordCases, game, depth = 0.32):
     img_compressed = robot.get_img_compressed()
     img = uncompress_image(img_compressed)
@@ -128,14 +140,15 @@ def check_winner(game):
     print("La partie continue.")
     return True
 
-def play(case, pionPose, observationJoints, coup):
+def play(game, coup):
     i, j = coup
-    robot.move_pose(pionPose)
+    robot.move_pose(pickPose)
     robot.close_gripper(400)
 
     robot.move_joints(observationJoints)
-    robot.move_pose(PoseObject(case[i][j][0], case[i][j][1], 0.09, 0, 1.57, 0), "Morpion")
+    robot.move_pose(PoseObject(caseMorpion[i][j][0], caseMorpion[i][j][1], 0.09, 0, 1.57, 0), "Morpion")
     robot.open_gripper(400)
+    game[i][j] = 2
 
     robot.move_joints(observationJoints)
     
@@ -153,24 +166,15 @@ if __name__ == '__main__':
     y_axe2 = [0.3718, 0.0836,0.0272]
     robot.save_dynamic_frame_from_points("Morpion", "Un repère dynamique prenant comme origine le repère en bas en gauche du workspace", origin2, x_axe2, y_axe2)
     
-    #enregistre la position relative en x et y des cases dans le repère dynamique Morpion en partant de haut à gauche et en finissant en bas à droite
-    caseMorpion = [
-    [[0.025, 0.155], [0.09, 0.155], [0.155, 0.155]],
-    [[0.025, 0.09],  [0.09, 0.09],  [0.155, 0.09]],
-    [[0.025, 0.025], [0.09, 0.025], [0.155, 0.025]]
-    ]
-    
-    homeJoints = [0, 0.5, -1.25, 0, 0, 0]
-    observationJoints = [0, 0.22, -0.4, 0, -1.6, 0] 
-
-    pickPose = PoseObject(0.2768, -0.1265, 0.1091, 0.177, 1.251, -1.431)
-    
-    #Donne l'état actuel du jeu, -1 si pas de pion, 0 pour un carré et 1 pour un cercle
+    #Donne l'état actuel du jeu, -1 si pas de pion, 2 pour un carré et 1 pour un cercle
     game = [[0, 0, 0],
             [0, 0, 0],
             [0, 0, 0]
             ]
     newGame = copy.deepcopy(game)
+
+    robot.move_joints(observationJoints)
+    robot.open_gripper(400)
     
     playing = True
 
@@ -185,7 +189,12 @@ if __name__ == '__main__':
             robot.wait(3)
         print("Etat du jeu :", newGame)
         playing = check_winner(game)
-        print(meilleur_coup(game))
-        #check_winner(game, playing)
+        if not playing:
+            break
+        coup = meilleur_coup(game)
+        play(game, coup)
+        newGame = copy.deepcopy(game)
+        check_winner(game)
     
+    robot.move_joints(homeJoints)
     robot.close_connection()
