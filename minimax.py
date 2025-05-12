@@ -23,7 +23,9 @@ def meilleur_coup(grille):
     return coup
 
 def minimax(grille, maximisation):
+
     resultat = gagner(grille)
+
     if resultat is not None:
         return scores[resultat]
     elif egalite(grille):
@@ -71,4 +73,5 @@ def egalite(grille):
         for j in range(3):
             if grille[i][j] == 0:
                 return False
+    return True
 
