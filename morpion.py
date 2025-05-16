@@ -32,8 +32,6 @@ def detect_objects_positions(robot, coordCases, game, depth = 0.32):
         cnt_barycenter = get_contour_barycenter(cnt)
         cx, cy = cnt_barycenter
         if 180 < cx < 420 and 70 < cy < 300 :
-            # Afficher la position du barycentre (x, y) de l'objet
-            #print(f"Objet détecté à la position (x: {cx - x_origin}, y: {y_origin - cy})")
 
             # Obtenir les paramètres de la caméra
             mtx, dist = robot.get_camera_intrinsics()
@@ -58,35 +56,6 @@ def detect_objects_positions(robot, coordCases, game, depth = 0.32):
             #show_img_and_wait_close("Image avec barycentre", img_debug)
 
     return game
-    
-
-def move_to_object(robot, object_position, z_position=0.1, depth=0.32):
-    """
-    Déplace le robot à la position de l'objet détecté à partir d'une image.
-    
-    :param robot: instance de NiryoRobot
-    :param object_position: tuple (x, y) de la position en pixels dans l'image
-    :param z_position: hauteur cible pour le robot
-    :param depth: estimation de la profondeur (mètres)
-    """
-    # Obtenir les paramètres de la caméra
-    mtx, dist = robot.get_camera_intrinsics()
-
-    # Paramètres de calibration de la caméra
-    fx = mtx[0, 0]
-    fy = mtx[1, 1]
-
-    # Conversion pixels → mètres avec les focales
-    x_real = object_position[0] * depth / fx
-    y_real = object_position[1] * depth / fy
-    z_real = z_position
-
-    print(f"Objet détecté à {object_position} (px)")
-    print(f"Coordonnées réelles estimées : x={x_real:.3f} m, y={y_real:.3f} m, z={z_real:.3f} m")
-
-    # Créer une pose robot et se déplacer
-    pose = PoseObject(x=x_real, y=y_real, z=z_real, roll=0.0, pitch=1.57, yaw=0.0)
-    robot.move_pose(pose, "Morpion")
     
 def get_closest_case(position, cases):
     min_distance = float('inf')
@@ -114,31 +83,66 @@ def detect_shape(cnt):
     else:
         return 1
         
-def check_winner(game):
+def check_winner(robot, game):
     # Vérifie lignes et colonnes
     for i in range(3):
         if game[i][0] == game[i][1] == game[i][2] != 0:
             print(f"Le joueur '{game[i][0]}' a gagné (ligne {i+1}).")
+            #tellWinner(robot, game[i][0])
             return False
         if game[0][i] == game[1][i] == game[2][i] != 0:
             print(f"Le joueur '{game[0][i]}' a gagné (colonne {i+1}).")
+            #tellWinner(robot, game[0][i])
             return False
     
     # Vérifie les diagonales
     if game[0][0] == game[1][1] == game[2][2] != 0:
         print(f"Le joueur '{game[0][0]}' a gagné (diagonale principale).")
+        #tellWinner(robot, game[0][0])
         return False
     if game[0][2] == game[1][1] == game[2][0] != 0:
         print(f"Le joueur '{game[0][2]}' a gagné (diagonale secondaire).")
+        #tellWinner(robot, game[0][2])
         return False
 
     # Vérifie égalité
     if all(cell != 0 for row in game for cell in row):
         print("La partie est terminée par égalité.")
+        #tellWinner(robot, 0)
         return False
 
     print("La partie continue.")
     return True
+
+def tellWinner(robot, result):
+    if result == 2:
+        robot.say("Bien joué vous avez gagné", 1)
+    if result == 1:
+        robot.say("Je suis trop fort", 1)
+    if result == 0:
+        robot.say("égalité", 1)
+
+def checkWhoStart(robot):
+    img_compressed = robot.get_img_compressed()
+    img = uncompress_image(img_compressed)
+    img_threshold = threshold_hsv(img, *ColorHSV.ANY.value)
+    # Appliquer des transformations morphologiques (par exemple, ouverture) pour améliorer l'image
+    img_threshold = morphological_transformations(img_threshold, morpho_type=MorphoType.OPEN,
+                                                  kernel_shape=(11, 11), kernel_type=KernelType.ELLIPSE)
+    
+    cnts = biggest_contours_finder(img_threshold, 5)
+
+    for cnt in cnts:
+        # Trouver le barycentre de chaque contour
+        cnt_barycenter = get_contour_barycenter(cnt)
+        cx, cy = cnt_barycenter
+        if 180 < cx < 420 and 70 < cy < 300 :
+            shape = detect_shape(cnt)
+            return shape
+    return 0
+
+    
+
 
 def play(game, coup):
     i, j = coup
@@ -152,12 +156,11 @@ def play(game, coup):
 
     robot.move_joints(observationJoints)
     
-    
 if __name__ == '__main__':
     robot = NiryoRobot("10.10.10.10")
     robot.calibrate_auto()
     
-    robot.set_brightness(1.3)
+    robot.set_brightness(1.0)
     robot.set_contrast(1.0)
     robot.set_saturation(1.1)
     
@@ -178,23 +181,42 @@ if __name__ == '__main__':
     
     playing = True
 
+    print("La partie peut commencer !")
+    print("Montrez un carré pour que je commence et un cercle si vous voulez commencer")
+    start = 0
+    while start == 0:
+        start = checkWhoStart(robot)
+        robot.wait(3)
+    change = False
+    if start == 2:
+        change = True
+        print("Je commence")
+    else:
+        print("Commencez !")
+    robot.wait(5)
     while playing :
-        change = False
         while not change:
+            robot.led_ring_chase([15, 50, 255])
+            #robot.say("A vous de jouer", 1)
             detect_objects_positions(robot, caseMorpion, newGame)
             if newGame != game:
                 change = True
                 game = copy.deepcopy(newGame)
             print("waiting")
             robot.wait(3)
+
         print("Etat du jeu :", newGame)
-        playing = check_winner(game)
+        robot.led_ring_chase([15, 255, 50])
+        #robot.say("A mon tour !", 1)
+
+        playing = check_winner(robot, game)
         if not playing:
             break
         coup = meilleur_coup(game)
         play(game, coup)
         newGame = copy.deepcopy(game)
-        playing = check_winner(game)
+        playing= check_winner(robot, game)
+        change = False
     
     robot.move_joints(homeJoints)
     robot.close_connection()
