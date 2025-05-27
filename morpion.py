@@ -2,7 +2,7 @@ from pyniryo import *
 from minimax import *
 import copy
 
-#enregistre la position relative en x et y des cases dans le repère dynamique Morpion en partant de haut à gauche et en finissant en bas à droite
+# enregistre la position relative en x et y des cases dans le repère dynamique Morpion en partant de haut à gauche et en finissant en bas à droite
 caseMorpion = [
     [[0.025, 0.155], [0.09, 0.155], [0.155, 0.155]],
     [[0.025, 0.09],  [0.09, 0.09],  [0.155, 0.09]],
@@ -18,31 +18,31 @@ def detect_objects_positions(robot, coordCases, game, depth = 0.32):
     img_compressed = robot.get_img_compressed()
     img = uncompress_image(img_compressed)
     img_threshold = threshold_hsv(img, *ColorHSV.ANY.value)
-    # Appliquer des transformations morphologiques (par exemple, ouverture) pour améliorer l'image
+    # appliquer des transformations morphologiques (par exemple, ouverture) pour améliorer l'image
     img_threshold = morphological_transformations(img_threshold, morpho_type=MorphoType.OPEN,
                                                   kernel_shape=(11, 11), kernel_type=KernelType.ELLIPSE)
-    # Trouver les contours dans l'image seuillée
+    # trouver les contours dans l'image seuillée
     cnts = biggest_contours_finder(img_threshold, 10)  # Trouver les 10 plus gros contours
     
     x_origin = 195
     y_origin = 305
 
     for cnt in cnts:
-        # Trouver le barycentre de chaque contour
+        # trouver le barycentre de chaque contour
         cnt_barycenter = get_contour_barycenter(cnt)
         cx, cy = cnt_barycenter
         if 180 < cx < 420 and 70 < cy < 300 :
-            # Afficher la position du barycentre (x, y) de l'objet
-            #print(f"Objet détecté à la position (x: {cx - x_origin}, y: {y_origin - cy})")
+            # afficher la position du barycentre (x, y) de l'objet
+            # print(f"Objet détecté à la position (x: {cx - x_origin}, y: {y_origin - cy})")
 
-            # Obtenir les paramètres de la caméra
+            # obtenir les paramètres de la caméra
             mtx, dist = robot.get_camera_intrinsics()
 
-            # Paramètres de calibration de la caméra
+            # paramètres de calibration de la caméra
             fx = mtx[0, 0]
             fy = mtx[1, 1]
 
-            # Conversion pixels → mètres avec les focales
+            # conversion pixels → mètres avec les focales
             x_real = (cx - x_origin) * depth / fx
             y_real = (y_origin - cy) * depth / fy
             
@@ -50,12 +50,12 @@ def detect_objects_positions(robot, coordCases, game, depth = 0.32):
             shape = detect_shape(cnt)
             game[i][j] = shape
 
-            # Pour visualisation, dessiner le contour et le barycentre
+            # pour visualisation, dessiner le contour et le barycentre
             img_debug = draw_contours(img_threshold, [cnt])
             img_debug = draw_barycenter(img_debug, cx, cy)
 
-            # Afficher l'image de débogage
-            #show_img_and_wait_close("Image avec barycentre", img_debug)
+            # afficher l'image de débogage
+            # show_img_and_wait_close("Image avec barycentre", img_debug)
 
     return game
     
@@ -69,14 +69,14 @@ def move_to_object(robot, object_position, z_position=0.1, depth=0.32):
     :param z_position: hauteur cible pour le robot
     :param depth: estimation de la profondeur (mètres)
     """
-    # Obtenir les paramètres de la caméra
+    # obtenir les paramètres de la caméra
     mtx, dist = robot.get_camera_intrinsics()
 
-    # Paramètres de calibration de la caméra
+    # paramètres de calibration de la caméra
     fx = mtx[0, 0]
     fy = mtx[1, 1]
 
-    # Conversion pixels → mètres avec les focales
+    # conversion pixels → mètres avec les focales
     x_real = object_position[0] * depth / fx
     y_real = object_position[1] * depth / fy
     z_real = z_position
@@ -84,7 +84,7 @@ def move_to_object(robot, object_position, z_position=0.1, depth=0.32):
     print(f"Objet détecté à {object_position} (px)")
     print(f"Coordonnées réelles estimées : x={x_real:.3f} m, y={y_real:.3f} m, z={z_real:.3f} m")
 
-    # Créer une pose robot et se déplacer
+    # créer une pose robot et se déplacer
     pose = PoseObject(x=x_real, y=y_real, z=z_real, roll=0.0, pitch=1.57, yaw=0.0)
     robot.move_pose(pose, "Morpion")
     
@@ -115,7 +115,7 @@ def detect_shape(cnt):
         return 1
         
 def check_winner(game):
-    # Vérifie lignes et colonnes
+    # vérifie lignes et colonnes
     for i in range(3):
         if game[i][0] == game[i][1] == game[i][2] != 0:
             print(f"Le joueur '{game[i][0]}' a gagné (ligne {i+1}).")
@@ -124,7 +124,7 @@ def check_winner(game):
             print(f"Le joueur '{game[0][i]}' a gagné (colonne {i+1}).")
             return False
     
-    # Vérifie les diagonales
+    # vérifie les diagonales
     if game[0][0] == game[1][1] == game[2][2] != 0:
         print(f"Le joueur '{game[0][0]}' a gagné (diagonale principale).")
         return False
@@ -132,7 +132,7 @@ def check_winner(game):
         print(f"Le joueur '{game[0][2]}' a gagné (diagonale secondaire).")
         return False
 
-    # Vérifie égalité
+    # vérifie égalité
     if all(cell != 0 for row in game for cell in row):
         print("La partie est terminée par égalité.")
         return False
@@ -157,7 +157,7 @@ if __name__ == '__main__':
     robot = NiryoRobot("10.10.10.10")
     robot.calibrate_auto()
     
-    robot.set_brightness(1.3)
+    robot.set_brightness(1.3) # paramètres à changer en fonction de la luminosité de la pièce
     robot.set_contrast(1.0)
     robot.set_saturation(1.1)
     
@@ -166,7 +166,7 @@ if __name__ == '__main__':
     y_axe2 = [0.3718, 0.0836,0.0272]
     robot.save_dynamic_frame_from_points("Morpion", "Un repère dynamique prenant comme origine le repère en bas en gauche du workspace", origin2, x_axe2, y_axe2)
     
-    #Donne l'état actuel du jeu, -1 si pas de pion, 2 pour un carré et 1 pour un cercle
+    # état du jeu (0 si pas de pion, 2 pour un carré, 1 pour un cercle)
     game = [[0, 0, 0],
             [0, 0, 0],
             [0, 0, 0]
@@ -181,12 +181,26 @@ if __name__ == '__main__':
     while playing :
         change = False
         while not change:
+            print("En attente ...")
+            robot.wait(3)
             detect_objects_positions(robot, caseMorpion, newGame)
             if newGame != game:
-                change = True
+                for i in range(3):
+                    for j in range(3):
+                        if game[i][j] != 0 and newGame[i][j] != game[i][j]:
+                            newGame[i][j] = game[i][j]
+                nbZero, nbMemeZero = 0
+                personneAJoue = False
+                for i in range(3):
+                    for j in range(3):
+                        if game[i][j] == 0:
+                            nbZero += 1
+                        if newGame[i][j] == 0 and game[i][j] == 0:   
+                            nbMemeZero += 1
+                        if nbZero == nbMemeZero:
+                            personneAJoue = True   
+                change = True and not personneAJoue
                 game = copy.deepcopy(newGame)
-            print("waiting")
-            robot.wait(3)
         print("Etat du jeu :", newGame)
         playing = check_winner(game)
         if not playing:
