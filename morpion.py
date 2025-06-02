@@ -119,26 +119,61 @@ def check_winner(game):
     for i in range(3):
         if game[i][0] == game[i][1] == game[i][2] != 0:
             print(f"Le joueur '{game[i][0]}' a gagné (ligne {i+1}).")
+            #tellWinner(robot, game[i][0])
             return False
         if game[0][i] == game[1][i] == game[2][i] != 0:
             print(f"Le joueur '{game[0][i]}' a gagné (colonne {i+1}).")
+            #tellWinner(robot, game[0][i])
             return False
     
     # vérifie les diagonales
     if game[0][0] == game[1][1] == game[2][2] != 0:
         print(f"Le joueur '{game[0][0]}' a gagné (diagonale principale).")
+        #tellWinner(robot, game[0][0])
         return False
     if game[0][2] == game[1][1] == game[2][0] != 0:
         print(f"Le joueur '{game[0][2]}' a gagné (diagonale secondaire).")
+        #tellWinner(robot, game[0][2])
         return False
 
     # vérifie égalité
     if all(cell != 0 for row in game for cell in row):
         print("La partie est terminée par égalité.")
+        #tellWinner(robot, 0)
         return False
 
     print("La partie continue.")
     return True
+
+def tellWinner(robot, result):
+    if result == 2:
+        robot.say("Bien joué vous avez gagné", 1)
+    if result == 1:
+        robot.say("Je suis trop fort", 1)
+    if result == 0:
+        robot.say("égalité", 1)
+
+def checkWhoStart(robot):
+    img_compressed = robot.get_img_compressed()
+    img = uncompress_image(img_compressed)
+    img_threshold = threshold_hsv(img, *ColorHSV.ANY.value)
+    # Appliquer des transformations morphologiques (par exemple, ouverture) pour améliorer l'image
+    img_threshold = morphological_transformations(img_threshold, morpho_type=MorphoType.OPEN,
+                                                  kernel_shape=(11, 11), kernel_type=KernelType.ELLIPSE)
+    
+    cnts = biggest_contours_finder(img_threshold, 5)
+
+    for cnt in cnts:
+        # Trouver le barycentre de chaque contour
+        cnt_barycenter = get_contour_barycenter(cnt)
+        cx, cy = cnt_barycenter
+        if 180 < cx < 420 and 70 < cy < 300 :
+            shape = detect_shape(cnt)
+            return shape
+    return 0
+
+    
+
 
 def play(game, coup):
     i, j = coup
@@ -151,7 +186,6 @@ def play(game, coup):
     game[i][j] = 2
 
     robot.move_joints(observationJoints)
-    
     
 if __name__ == '__main__':
     robot = NiryoRobot("10.10.10.10")
@@ -178,36 +212,55 @@ if __name__ == '__main__':
     
     playing = True
 
-    while playing :
-        change = False
+    print("La partie peut commencer !")
+    start = 0
+    while start == 0:
+        start = int(input("Rentrez 1 pour commencer, 2 pour que le robot commence !"))
+        assert start == 1 or start == 2, "Ne rentrez que 1 ou 2"
+        robot.wait(3)
+    change = False
+    if start == 2:
+        change = True
+        print("Je commence")
+    else:
+        print("Commencez !")
+    robot.wait(5)
+    while playing:
         while not change:
             print("En attente ...")
             robot.wait(3)
             detect_objects_positions(robot, caseMorpion, newGame)
-            if newGame != game:
-                for i in range(3):
-                    for j in range(3):
-                        if game[i][j] != 0 and newGame[i][j] != game[i][j]:
-                            newGame[i][j] = game[i][j]
-                nbZero, nbMemeZero = 0
-                personneAJoue = False
-                for i in range(3):
-                    for j in range(3):
-                        if game[i][j] == 0:
-                            nbZero += 1
-                        if newGame[i][j] == 0 and game[i][j] == 0:   
-                            nbMemeZero += 1
-                        if nbZero == nbMemeZero:
-                            personneAJoue = True   
-                change = True and not personneAJoue
+
+            # conserver les cases déjà remplies
+            for i in range(3):
+                for j in range(3):
+                    if game[i][j] != 0:
+                        newGame[i][j] = game[i][j]
+
+            # vérifier si un nouveau pion a été posé
+            joueur_a_joue = False
+            for i in range(3):
+                for j in range(3):
+                    if game[i][j] == 0 and newGame[i][j] != 0:
+                        joueur_a_joue = True
+
+            if joueur_a_joue:
                 game = copy.deepcopy(newGame)
+                change = True
+
         print("Etat du jeu :", newGame)
+        robot.led_ring_chase([15, 255, 50])
+
         playing = check_winner(game)
         if not playing:
             break
+
         coup = meilleur_coup(game)
         play(game, coup)
+
+        # mettre à jour les deux matrices après le coup joué par le robot
         newGame = copy.deepcopy(game)
+        change = False
         playing = check_winner(game)
     
     robot.move_joints(homeJoints)
