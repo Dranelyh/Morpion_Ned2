@@ -1,6 +1,9 @@
 from pyniryo import *
 from minimax import *
 import copy
+import warnings
+
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 # enregistre la position relative en x et y des cases dans le repère dynamique Morpion en partant de haut à gauche et en finissant en bas à droite
 caseMorpion = [
