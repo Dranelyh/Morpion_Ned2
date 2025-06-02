@@ -118,43 +118,33 @@ def detect_shape(cnt):
         return 1
         
 def check_winner(game):
+
+    joueurs = {1: "joueur", 2: "robot"}
+
     # vérifie lignes et colonnes
     for i in range(3):
         if game[i][0] == game[i][1] == game[i][2] != 0:
-            print(f"Le joueur '{game[i][0]}' a gagné (ligne {i+1}).")
-            #tellWinner(robot, game[i][0])
+            print(f"Le {joueurs[game[i][0]]} a gagné (ligne {i+1}).")
             return False
         if game[0][i] == game[1][i] == game[2][i] != 0:
-            print(f"Le joueur '{game[0][i]}' a gagné (colonne {i+1}).")
-            #tellWinner(robot, game[0][i])
+            print(f"Le {joueurs[game[0][i]]} a gagné (colonne {i+1}).")
             return False
     
     # vérifie les diagonales
     if game[0][0] == game[1][1] == game[2][2] != 0:
-        print(f"Le joueur '{game[0][0]}' a gagné (diagonale principale).")
-        #tellWinner(robot, game[0][0])
+        print(f"Le {joueurs[game[0][0]]} a gagné (diagonale principale).")
         return False
     if game[0][2] == game[1][1] == game[2][0] != 0:
-        print(f"Le joueur '{game[0][2]}' a gagné (diagonale secondaire).")
-        #tellWinner(robot, game[0][2])
+        print(f"Le {joueurs[game[0][2]]} a gagné (diagonale secondaire).")
         return False
 
     # vérifie égalité
     if all(cell != 0 for row in game for cell in row):
         print("La partie est terminée par égalité.")
-        #tellWinner(robot, 0)
         return False
 
     print("La partie continue.")
     return True
-
-def tellWinner(robot, result):
-    if result == 2:
-        robot.say("Bien joué vous avez gagné", 1)
-    if result == 1:
-        robot.say("Je suis trop fort", 1)
-    if result == 0:
-        robot.say("égalité", 1)
 
 def checkWhoStart(robot):
     img_compressed = robot.get_img_compressed()
